@@ -1,0 +1,199 @@
+// Prisma schema for Better Auth + Patient Pickup (bus system)
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]  
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Post {
+  id          String   @id @default(cuid())
+  name        String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy   User     @relation(fields: [createdById], references: [id])
+  createdById String
+
+  @@index([name])
+}
+
+model User {
+  id            String    @id
+  name          String    //@db.Text
+  email         String
+  emailVerified Boolean   @default(false)
+  image         String?   //@db.Text
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @default(now()) @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+  posts         Post[]
+  role          String    @default("user")
+
+  phone         String?   //@db.Text
+  address       String?   //@db.Text
+
+  children      Child[]
+  driverRoute   BusRoute? @relation("DriverToRoute")
+  pickupRecords PickupRecord[]
+  driverShifts  DriverShift[]   // ← ADD THIS LINE
+
+  balanceDue Decimal @default(0) @db.Decimal(10,2)
+  liveLocations LiveLocation[]
+
+  DriverLocation DriverLocation[]
+
+  @@unique([email])
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?  //@db.Text
+  userAgent String?  //@db.Text
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String    //@db.Text
+  providerId            String    //@db.Text
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?   //@db.Text
+  refreshToken          String?   //@db.Text
+  idToken               String?   //@db.Text
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?   //@db.Text
+  password              String?   //@db.Text
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String   //@db.Text
+  value      String   //@db.Text
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+
+  @@map("verification")
+}
+
+// ==================== NEW MODELS FOR PATIENT PICKUP ====================
+
+model Child {
+  id             String          @id @default(cuid())
+  name           String
+  address        String
+  parentId       String
+  parent         User            @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  busRouteId     String?
+  busRoute       BusRoute?       @relation(fields: [busRouteId], references: [id], onDelete: SetNull)
+
+  pickupRecords  PickupRecord[]
+  absenceNotices AbsenceNotice[]
+
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+model BusRoute {
+  id        String   @id @default(cuid())
+  busNumber String   @unique
+  driverId  String   @unique
+  driver    User     @relation(fields: [driverId], references: [id], onDelete: Restrict, name: "DriverToRoute")
+  children  Child[]
+
+  shifts    DriverShift[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PickupRecord {
+  id         String   @id @default(cuid())
+  childId    String
+  date       DateTime // start of day (YYYY-MM-DD 00:00:00)
+  pickedUp   Boolean  @default(false)
+  pickedAt   DateTime?
+  pickedById String?
+
+  child      Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  pickedBy   User?    @relation(fields: [pickedById], references: [id])
+
+  @@unique([childId, date])
+  @@index([date])
+}
+
+model AbsenceNotice {
+  id         String   @id @default(cuid())
+  childId    String
+  date       DateTime // the day the notice applies to
+  willPickup Boolean  @default(true) // false = grey out for driver
+
+  child      Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  @@unique([childId, date])
+}
+
+model DriverShift {
+  id          String    @id @default(cuid())
+  driverId    String
+  date        DateTime  // start of day (YYYY-MM-DD)
+  clockIn     DateTime?
+  clockOut    DateTime?
+  routeId     String?
+  completed   Boolean   @default(false)
+
+  driver      User      @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  route       BusRoute? @relation(fields: [routeId], references: [id], onDelete: SetNull)
+
+  @@unique([driverId, date])
+  @@index([date])
+}
+
+model LiveLocation {
+  id          String   @id @default(cuid())
+  driverId    String
+  latitude    Float
+  longitude   Float
+  accuracy    Float?
+  timestamp   DateTime @default(now())
+
+  driver      User     @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  @@index([driverId])
+  @@index([timestamp])
+}
+
+model DriverLocation {
+  id        String   @id @default(cuid())
+  driverId  String   @unique
+  lat       Float
+  lng       Float
+  accuracy  Float?
+  busNumber String?
+  updatedAt DateTime @updatedAt
+
+  driver    User     @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  @@map("driver_locations")
+}

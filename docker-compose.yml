@@ -1,0 +1,36 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: patient-pickup-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pooUx80DO2cXy_1R
+      POSTGRES_DB: patient-pickup
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  app:
+    platform: "linux/amd64"
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_CLIENTVAR: "clientvar"
+    working_dir: /app
+    ports:
+      - "3000:3000"
+    image: t3-app
+    env_file:                     # ← NEW: loads ALL your .env vars
+      - .env
+    environment:                  # ← overrides only the DB connection for Docker network
+      - DATABASE_URL=postgresql://postgres:pooUx80DO2cXy_1R@db:5432/patient-pickup
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:
