@@ -81,6 +81,8 @@ This is a [T3 Stack](https://create.t3.gg/) project bootstrapped with `create-t3
 - Node.js ≥ 20
 - PostgreSQL (16+ recommended)
 - pnpm (recommended) or npm/yarn
+- git bash
+- docker (cli or desktop)
 
 ---
 
@@ -90,7 +92,7 @@ This is a [T3 Stack](https://create.t3.gg/) project bootstrapped with `create-t3
 ```bash
 git clone https://github.com/nothingmakes-sense/Transportation-Tracker
 cd Transportation-Tracker
-pnpm install
+docker compose up
 ```
 ## How do I deploy this?
 
