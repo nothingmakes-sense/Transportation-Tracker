@@ -89,7 +89,7 @@ This is a [T3 Stack](https://create.t3.gg/) project bootstrapped with `create-t3
 ### 1. Clone & Install
 ```bash
 git clone https://github.com/nothingmakes-sense/Transportation-Tracker
-cd commercial-transit
+cd Transportation-Tracker
 pnpm install
 ```
 ## How do I deploy this?
